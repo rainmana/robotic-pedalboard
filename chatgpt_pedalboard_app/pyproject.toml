@@ -1,0 +1,20 @@
+[project]
+name = "chatgpt-pedalboard-app"
+version = "0.1.0"
+description = "A ChatGPT Apps SDK MCP server that gives ChatGPT an agentic Pedalboard music studio."
+requires-python = ">=3.11"
+dependencies = [
+  "mcp>=1.12.4",
+  "numpy>=1.26",
+  "pedalboard>=0.9.22",
+  "pydantic>=2.7",
+  "starlette>=0.37",
+  "uvicorn>=0.30",
+]
+
+[project.scripts]
+chatgpt-pedalboard-app = "robotic_pedalboard_app.app:main"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

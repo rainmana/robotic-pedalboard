@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pedalboard Studio</title>
+    <style>
+      :root {
+        color: #151515;
+        background: #f7f4ef;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: #f7f4ef;
+      }
+      main {
+        width: min(980px, 100%);
+        margin: 0 auto;
+        padding: 14px;
+      }
+      header {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 12px;
+        align-items: center;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #d7d1c6;
+      }
+      h1 {
+        margin: 0;
+        font-size: 20px;
+        line-height: 1.1;
+        letter-spacing: 0;
+      }
+      .subtle {
+        color: #666052;
+        font-size: 13px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.25fr) minmax(280px, 0.75fr);
+        gap: 14px;
+        margin-top: 14px;
+      }
+      section {
+        min-width: 0;
+      }
+      .panel {
+        background: #fffdfa;
+        border: 1px solid #d7d1c6;
+        border-radius: 8px;
+        padding: 12px;
+      }
+      label {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 10px;
+        font-size: 13px;
+        color: #373326;
+      }
+      textarea,
+      input,
+      select {
+        width: 100%;
+        border: 1px solid #bcb4a6;
+        border-radius: 6px;
+        background: #fff;
+        color: #171717;
+        padding: 9px 10px;
+        font: inherit;
+      }
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+      .row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+      }
+      button {
+        border: 1px solid #171717;
+        border-radius: 6px;
+        background: #171717;
+        color: #fff;
+        padding: 9px 12px;
+        font: inherit;
+        font-weight: 650;
+        cursor: pointer;
+      }
+      button.secondary {
+        background: #fffdfa;
+        color: #171717;
+      }
+      button:disabled {
+        opacity: 0.55;
+        cursor: progress;
+      }
+      .effects {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+      }
+      .effect {
+        border: 1px solid #d7d1c6;
+        border-radius: 6px;
+        padding: 8px;
+        background: #fdf8f0;
+      }
+      .effect strong {
+        display: block;
+        font-size: 13px;
+      }
+      .effect span {
+        display: block;
+        margin-top: 3px;
+        color: #666052;
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .transport {
+        display: grid;
+        gap: 10px;
+      }
+      audio {
+        width: 100%;
+      }
+      .render {
+        display: grid;
+        gap: 8px;
+        border-top: 1px solid #d7d1c6;
+        margin-top: 12px;
+        padding-top: 12px;
+      }
+      .tracks {
+        display: grid;
+        gap: 6px;
+      }
+      .track {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 7px 0;
+        border-bottom: 1px solid #ece6dc;
+        font-size: 13px;
+      }
+      .status {
+        min-height: 20px;
+        font-size: 13px;
+        color: #514a3d;
+      }
+      @media (max-width: 760px) {
+        main {
+          padding: 10px;
+        }
+        header,
+        .layout,
+        .row,
+        .effects {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Pedalboard Studio</h1>
+          <div class="subtle" id="summary">Ready for a render.</div>
+        </div>
+        <button class="secondary" id="askButton" type="button">Ask ChatGPT to iterate</button>
+      </header>
+
+      <div class="layout">
+        <section class="panel">
+          <form id="renderForm">
+            <label>
+              Prompt
+              <textarea id="prompt">bright robotic arpeggio with delay, chorus, and a tidy limiter</textarea>
+            </label>
+            <div class="row">
+              <label>
+                BPM
+                <input id="bpm" type="number" min="40" max="220" value="104" />
+              </label>
+              <label>
+                Seconds
+                <input id="duration" type="number" min="1" max="45" value="12" />
+              </label>
+              <label>
+                Root
+                <select id="root">
+                  <option value="36">C2</option>
+                  <option value="43">G2</option>
+                  <option value="48" selected>C3</option>
+                  <option value="50">D3</option>
+                  <option value="55">G3</option>
+                </select>
+              </label>
+            </div>
+            <button id="renderButton" type="submit">Render WAV</button>
+            <div class="status" id="status"></div>
+          </form>
+
+          <div class="render" id="renderPanel" hidden>
+            <audio id="player" controls></audio>
+            <div class="tracks" id="tracks"></div>
+          </div>
+        </section>
+
+        <aside class="panel">
+          <div class="subtle">Available effects</div>
+          <div class="effects" id="effects"></div>
+        </aside>
+      </div>
+    </main>
+
+    <script id="effect-data" type="application/json">__EFFECT_CATALOG__</script>
+    <script type="module">
+      const effectsEl = document.querySelector("#effects");
+      const summaryEl = document.querySelector("#summary");
+      const statusEl = document.querySelector("#status");
+      const renderForm = document.querySelector("#renderForm");
+      const renderButton = document.querySelector("#renderButton");
+      const renderPanel = document.querySelector("#renderPanel");
+      const player = document.querySelector("#player");
+      const tracksEl = document.querySelector("#tracks");
+      const askButton = document.querySelector("#askButton");
+
+      const embeddedEffects = JSON.parse(document.querySelector("#effect-data").textContent || "[]");
+      let latestState = {
+        effects: window.openai?.toolOutput?.effects || embeddedEffects,
+        lastRender: window.openai?.toolOutput?.lastRender || null,
+      };
+
+      let rpcId = 0;
+      const pendingRequests = new Map();
+      const rpcNotify = (method, params) => {
+        window.parent.postMessage({ jsonrpc: "2.0", method, params }, "*");
+      };
+      const rpcRequest = (method, params) =>
+        new Promise((resolve, reject) => {
+          const id = ++rpcId;
+          pendingRequests.set(id, { resolve, reject });
+          window.parent.postMessage({ jsonrpc: "2.0", id, method, params }, "*");
+        });
+
+      window.addEventListener(
+        "message",
+        (event) => {
+          if (event.source !== window.parent) return;
+          const message = event.data;
+          if (!message || message.jsonrpc !== "2.0") return;
+          if (typeof message.id === "number") {
+            const pending = pendingRequests.get(message.id);
+            if (!pending) return;
+            pendingRequests.delete(message.id);
+            message.error ? pending.reject(message.error) : pending.resolve(message.result);
+            return;
+          }
+          if (message.method === "ui/notifications/tool-result") updateFromResult(message.params);
+        },
+        { passive: true },
+      );
+
+      const bridgeReady = (async () => {
+        try {
+          await rpcRequest("ui/initialize", {
+            appInfo: { name: "robotic-pedalboard", version: "0.1.0" },
+            appCapabilities: {},
+            protocolVersion: "2026-01-26",
+          });
+          rpcNotify("ui/notifications/initialized", {});
+        } catch (error) {
+          console.info("MCP Apps bridge unavailable; standalone mode stays active.", error);
+        }
+      })();
+
+      const updateFromResult = (response) => {
+        const data = response?.structuredContent || response || {};
+        if (data.effects) latestState.effects = data.effects;
+        if (data.lastRender) latestState.lastRender = data.lastRender;
+        if (data.render) latestState.lastRender = data.render;
+        render();
+      };
+
+      const callTool = async (name, payload) => {
+        if (window.openai?.callTool) {
+          const response = await window.openai.callTool(name, payload);
+          updateFromResult(response);
+          return response;
+        }
+        if (name === "render_pedalboard_composition") {
+          const response = await fetch("/api/render", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify(payload),
+          }).then((res) => {
+            if (!res.ok) throw new Error(`Render failed with ${res.status}`);
+            return res.json();
+          });
+          updateFromResult(response);
+          return response;
+        }
+        await bridgeReady;
+        const response = await rpcRequest("tools/call", { name, arguments: payload });
+        updateFromResult(response);
+        return response;
+      };
+
+      const render = () => {
+        const effects = latestState.effects || [];
+        effectsEl.innerHTML = "";
+        effects.forEach((effect) => {
+          const row = document.createElement("div");
+          row.className = "effect";
+          row.innerHTML = `<strong></strong><span></span>`;
+          row.querySelector("strong").textContent = effect.name;
+          row.querySelector("span").textContent = effect.purpose;
+          effectsEl.appendChild(row);
+        });
+
+        const last = latestState.lastRender;
+        renderPanel.hidden = !last;
+        if (!last) return;
+        summaryEl.textContent = `${last.title || "Render"} - ${last.duration_seconds}s, ${last.sample_rate} Hz`;
+        player.src = last.file?.download_url || "";
+        tracksEl.innerHTML = "";
+        (last.tracks || []).forEach((track) => {
+          const el = document.createElement("div");
+          el.className = "track";
+          const gain = `${track.gain_db} dB`;
+          el.innerHTML = `<span></span><span></span>`;
+          el.children[0].textContent = `${track.name} / ${track.waveform}`;
+          el.children[1].textContent = gain;
+          tracksEl.appendChild(el);
+        });
+      };
+
+      renderForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        renderButton.disabled = true;
+        statusEl.textContent = "Rendering...";
+        const prompt = document.querySelector("#prompt").value.trim();
+        try {
+          await callTool("render_pedalboard_composition", {
+            composition: {
+              title: "ChatGPT Pedalboard Render",
+              prompt,
+              bpm: Number(document.querySelector("#bpm").value),
+              duration_seconds: Number(document.querySelector("#duration").value),
+              key_midi: Number(document.querySelector("#root").value),
+              effects: [
+                { type: "Compressor", params: { threshold_db: -18, ratio: 2.5 } },
+                { type: "Chorus", params: { depth: 0.28, mix: 0.26 } },
+                { type: "Delay", params: { delay_seconds: 0.24, feedback: 0.2, mix: 0.22 } },
+                { type: "Reverb", params: { room_size: 0.38, wet_level: 0.2, dry_level: 0.84 } },
+                { type: "Limiter", params: { threshold_db: -1 } },
+              ],
+            },
+          });
+          statusEl.textContent = "Render complete.";
+        } catch (error) {
+          console.error(error);
+          statusEl.textContent = "Render failed.";
+        } finally {
+          renderButton.disabled = false;
+        }
+      });
+
+      askButton.addEventListener("click", () => {
+        const prompt = "Iterate on this Pedalboard render with a more intentional arrangement and effect chain.";
+        if (window.openai?.sendFollowUpMessage) {
+          window.openai.sendFollowUpMessage({ prompt });
+          return;
+        }
+        rpcNotify("ui/message", { role: "user", content: [{ type: "text", text: prompt }] });
+      });
+
+      if (!latestState.effects.length) {
+        callTool("inspect_pedalboard_effects", {}).catch(() => render());
+      } else {
+        render();
+      }
+    </script>
+  </body>
+</html>

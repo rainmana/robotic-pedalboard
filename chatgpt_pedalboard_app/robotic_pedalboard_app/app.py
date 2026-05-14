@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Annotated
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from mcp.types import CallToolResult, Resource, TextContent, Tool, ToolAnnotations
 from pydantic import BaseModel, Field
 from starlette.requests import Request
@@ -34,6 +35,11 @@ class ProcessFileRequest(BaseModel):
 
 class PedalboardMCP(FastMCP):
     def __init__(self) -> None:
+        public_base_url = os.getenv("PUBLIC_BASE_URL", "")
+        allowed_hosts = ["127.0.0.1", "127.0.0.1:8000", "127.0.0.1:8017", "localhost", "localhost:8000", "localhost:8017"]
+        if public_base_url.startswith(("http://", "https://")):
+            allowed_hosts.append(public_base_url.split("://", 1)[1].rstrip("/"))
+
         super().__init__(
             "Robotic Pedalboard",
             instructions=(
@@ -46,6 +52,7 @@ class PedalboardMCP(FastMCP):
             streamable_http_path="/mcp",
             stateless_http=True,
             json_response=True,
+            transport_security=TransportSecuritySettings(allowed_hosts=allowed_hosts),
         )
         self.tool_meta: dict[str, dict[str, Any]] = {}
         self.tool_output_schemas: dict[str, dict[str, Any]] = {}

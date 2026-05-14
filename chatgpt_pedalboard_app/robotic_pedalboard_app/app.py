@@ -318,6 +318,16 @@ def add_project_track(request: TrackMutationRequest) -> CallToolResult:
 
 
 @mcp.tool(
+    name="create_track",
+    title="Create Track",
+    description="Alias for add_project_track. Use this when adding a durable track to a project.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def create_track(request: TrackMutationRequest) -> CallToolResult:
+    return add_project_track(request)
+
+
+@mcp.tool(
     name="update_project_track",
     title="Update Project Track",
     description="Use this when changing a durable track's name, waveform, gain, pan, mute, or stored effects.",
@@ -330,6 +340,16 @@ def update_project_track(request: TrackMutationRequest) -> CallToolResult:
         {"project": project.model_dump(mode="json")},
         {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
     )
+
+
+@mcp.tool(
+    name="update_track",
+    title="Update Track",
+    description="Alias for update_project_track. Use this when editing a durable project track.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def update_track(request: TrackMutationRequest) -> CallToolResult:
+    return update_project_track(request)
 
 
 @mcp.tool(
@@ -348,6 +368,16 @@ def add_project_clip(request: ClipMutationRequest) -> CallToolResult:
 
 
 @mcp.tool(
+    name="create_clip",
+    title="Create Clip",
+    description="Alias for add_project_clip. Use this when adding a durable clip to a project track.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def create_clip(request: ClipMutationRequest) -> CallToolResult:
+    return add_project_clip(request)
+
+
+@mcp.tool(
     name="update_project_clip",
     title="Update Project Clip",
     description="Use this when editing a durable clip's bars, length, or note array.",
@@ -360,6 +390,16 @@ def update_project_clip(request: ClipMutationRequest) -> CallToolResult:
         {"project": project.model_dump(mode="json")},
         {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
     )
+
+
+@mcp.tool(
+    name="update_clip",
+    title="Update Clip",
+    description="Alias for update_project_clip. Use this when editing a durable project clip.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def update_clip(request: ClipMutationRequest) -> CallToolResult:
+    return update_project_clip(request)
 
 
 @mcp.tool(
@@ -407,6 +447,16 @@ def render_project_region(request: RenderRegionRequest) -> CallToolResult:
 
 
 @mcp.tool(
+    name="render_region",
+    title="Render Region",
+    description="Alias for render_project_region. Use this when rendering a project bar range.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+def render_region(request: RenderRegionRequest) -> CallToolResult:
+    return render_project_region(request)
+
+
+@mcp.tool(
     name="render_project_stems",
     title="Render Project Stems",
     description="Use this when exporting one WAV per unmuted project track plus the full mix.",
@@ -425,6 +475,16 @@ def render_project_stems(request: RenderProjectRequest) -> CallToolResult:
         {"project": project.model_dump(mode="json"), "mix": mix, "stems": stems},
         {"mix_local_path": mix["local_path"]},
     )
+
+
+@mcp.tool(
+    name="render_stems",
+    title="Render Stems",
+    description="Alias for render_project_stems. Use this when exporting project stems.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+def render_stems(request: RenderProjectRequest) -> CallToolResult:
+    return render_project_stems(request)
 
 
 @mcp.tool(

@@ -33,6 +33,8 @@ widget is included only for cases where the user explicitly asks to open a studi
 - `render_project`: renders the full persistent project.
 - `render_project_region`: renders a bar range.
 - `render_project_stems`: renders one WAV per unmuted track plus a mix.
+- Natural aliases are also exposed: `create_track`, `update_track`, `create_clip`,
+  `update_clip`, `render_region`, and `render_stems`.
 
 ## Project Model
 

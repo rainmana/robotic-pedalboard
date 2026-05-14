@@ -60,6 +60,12 @@ update_project_clip
 render_project
 render_project_region
 render_project_stems
+create_track
+update_track
+create_clip
+update_clip
+render_region
+render_stems
 ```
 
 The renderer supports:

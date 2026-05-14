@@ -283,14 +283,7 @@ def _render_track(track: TrackSpec, bpm: float, duration_seconds: float) -> np.n
     total = int(duration_seconds * SAMPLE_RATE)
     audio = np.zeros(total, dtype=np.float32)
     beat_seconds = 60 / bpm
-    notes = track.notes or [
-        NoteSpec(midi=48, start_beat=0, beats=1),
-        NoteSpec(midi=55, start_beat=1, beats=1),
-        NoteSpec(midi=58, start_beat=2, beats=1),
-        NoteSpec(midi=60, start_beat=3, beats=1),
-    ]
-
-    for note in notes:
+    for note in track.notes:
         start = min(total, int(note.start_beat * beat_seconds * SAMPLE_RATE))
         length = min(total - start, int(note.beats * beat_seconds * SAMPLE_RATE))
         if length <= 0:

@@ -19,10 +19,20 @@ from .engine import (
     process_audio_file,
     render_composition,
 )
+from .projects import (
+    CreateProjectRequest,
+    ProjectClipSpec,
+    ProjectStore,
+    ProjectTrackSpec,
+    RenderProjectRequest,
+    RenderRegionRequest,
+    UpdateProjectRequest,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_DIR = ROOT / "public"
 OUTPUT_DIR = ROOT / "outputs"
+PROJECT_DIR = ROOT / "projects"
 WIDGET_URI = "ui://widget/pedalboard-studio-v1.html"
 RESOURCE_MIME_TYPE = "text/html;profile=mcp-app"
 
@@ -33,10 +43,27 @@ class ProcessFileRequest(BaseModel):
     output_name: str | None = Field(default=None, description="Optional output WAV name.")
 
 
+class TrackMutationRequest(BaseModel):
+    project_id: str
+    track: ProjectTrackSpec
+
+
+class ClipMutationRequest(BaseModel):
+    project_id: str
+    clip: ProjectClipSpec
+
+
 class PedalboardMCP(FastMCP):
     def __init__(self) -> None:
         public_base_url = os.getenv("PUBLIC_BASE_URL", "")
-        allowed_hosts = ["127.0.0.1", "127.0.0.1:8000", "127.0.0.1:8017", "localhost", "localhost:8000", "localhost:8017"]
+        allowed_hosts = [
+            "127.0.0.1",
+            "127.0.0.1:8000",
+            "127.0.0.1:8017",
+            "localhost",
+            "localhost:8000",
+            "localhost:8017",
+        ]
         if public_base_url.startswith(("http://", "https://")):
             allowed_hosts.append(public_base_url.split("://", 1)[1].rstrip("/"))
 
@@ -97,6 +124,7 @@ class PedalboardMCP(FastMCP):
 
 
 mcp = PedalboardMCP()
+project_store = ProjectStore(PROJECT_DIR)
 
 
 def _public_base_url() -> str:
@@ -221,6 +249,182 @@ mcp.tool_output_schemas["render_pedalboard_composition"] = {
     "properties": {"render": {"type": "object"}, "lastRender": {"type": "object"}},
     "required": ["render", "lastRender"],
 }
+
+
+@mcp.tool(
+    name="create_project",
+    title="Create Project",
+    description=(
+        "Use this when the user wants persistent music state that can be edited and rendered "
+        "across multiple ChatGPT turns."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def create_project(request: CreateProjectRequest) -> CallToolResult:
+    project = project_store.create(request)
+    return _tool_result(
+        f"Created project {project.project_id}: {project.title}.",
+        {"project": project.model_dump(mode="json")},
+        {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
+    )
+
+
+@mcp.tool(
+    name="get_project",
+    title="Get Project",
+    description="Use this when you need the current persistent project state before editing or rendering.",
+    annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+def get_project(project_id: str) -> CallToolResult:
+    project = project_store.get(project_id)
+    return _tool_result(
+        f"Loaded project {project.project_id}: {project.title}.",
+        {"project": project.model_dump(mode="json")},
+        {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
+    )
+
+
+@mcp.tool(
+    name="update_project",
+    title="Update Project",
+    description=(
+        "Use this when changing persistent project metadata, sections, tempo, key, duration, "
+        "or master effects without replacing tracks and clips."
+    ),
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def update_project(request: UpdateProjectRequest) -> CallToolResult:
+    project = project_store.update(request)
+    return _tool_result(
+        f"Updated project {project.project_id}: {project.title}.",
+        {"project": project.model_dump(mode="json")},
+        {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
+    )
+
+
+@mcp.tool(
+    name="add_project_track",
+    title="Add Project Track",
+    description="Use this when adding a durable track with a stable track_id to a project.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def add_project_track(request: TrackMutationRequest) -> CallToolResult:
+    project = project_store.add_track(request.project_id, request.track)
+    return _tool_result(
+        f"Added track {request.track.track_id} to project {project.project_id}.",
+        {"project": project.model_dump(mode="json")},
+        {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
+    )
+
+
+@mcp.tool(
+    name="update_project_track",
+    title="Update Project Track",
+    description="Use this when changing a durable track's name, waveform, gain, pan, mute, or stored effects.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def update_project_track(request: TrackMutationRequest) -> CallToolResult:
+    project = project_store.update_track(request.project_id, request.track)
+    return _tool_result(
+        f"Updated track {request.track.track_id} in project {project.project_id}.",
+        {"project": project.model_dump(mode="json")},
+        {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
+    )
+
+
+@mcp.tool(
+    name="add_project_clip",
+    title="Add Project Clip",
+    description="Use this when adding a durable clip with notes to a project track.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def add_project_clip(request: ClipMutationRequest) -> CallToolResult:
+    project = project_store.add_clip(request.project_id, request.clip)
+    return _tool_result(
+        f"Added clip {request.clip.clip_id} to project {project.project_id}.",
+        {"project": project.model_dump(mode="json")},
+        {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
+    )
+
+
+@mcp.tool(
+    name="update_project_clip",
+    title="Update Project Clip",
+    description="Use this when editing a durable clip's bars, length, or note array.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=False),
+)
+def update_project_clip(request: ClipMutationRequest) -> CallToolResult:
+    project = project_store.update_clip(request.project_id, request.clip)
+    return _tool_result(
+        f"Updated clip {request.clip.clip_id} in project {project.project_id}.",
+        {"project": project.model_dump(mode="json")},
+        {"project_path": str(PROJECT_DIR / f"{project.project_id}.json")},
+    )
+
+
+@mcp.tool(
+    name="render_project",
+    title="Render Project",
+    description="Use this when rendering the current persistent project state to a full mix WAV.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+def render_project(request: RenderProjectRequest) -> CallToolResult:
+    project = project_store.get(request.project_id)
+    composition = project_store.to_composition(project)
+    result = render_composition(composition, OUTPUT_DIR, _public_base_url())
+    project = project_store.attach_render(project.project_id, result["file"]["download_url"], "render_project")
+    return _tool_result(
+        (
+            f"Rendered project {project.project_id} as {result['file']['file_name']}. "
+            f"Audio: {result['file']['download_url']}"
+        ),
+        {"project": project.model_dump(mode="json"), "render": result, "lastRender": result},
+        {"local_path": result["local_path"]},
+    )
+
+
+@mcp.tool(
+    name="render_project_region",
+    title="Render Project Region",
+    description="Use this when rendering only a bar range from a persistent project for faster iteration.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+def render_project_region(request: RenderRegionRequest) -> CallToolResult:
+    if request.end_bar < request.start_bar:
+        raise ValueError("end_bar must be greater than or equal to start_bar.")
+    project = project_store.get(request.project_id)
+    composition = project_store.to_composition(project, request.start_bar, request.end_bar)
+    result = render_composition(composition, OUTPUT_DIR, _public_base_url())
+    project = project_store.attach_render(project.project_id, result["file"]["download_url"], "render_project_region")
+    return _tool_result(
+        (
+            f"Rendered bars {request.start_bar}-{request.end_bar} of {project.project_id} "
+            f"as {result['file']['file_name']}. Audio: {result['file']['download_url']}"
+        ),
+        {"project": project.model_dump(mode="json"), "render": result, "lastRender": result},
+        {"local_path": result["local_path"]},
+    )
+
+
+@mcp.tool(
+    name="render_project_stems",
+    title="Render Project Stems",
+    description="Use this when exporting one WAV per unmuted project track plus the full mix.",
+    annotations=ToolAnnotations(readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=False),
+)
+def render_project_stems(request: RenderProjectRequest) -> CallToolResult:
+    project = project_store.get(request.project_id)
+    mix = render_composition(project_store.to_composition(project), OUTPUT_DIR, _public_base_url())
+    stems = []
+    for track_id, composition in project_store.stem_compositions(project):
+        result = render_composition(composition, OUTPUT_DIR, _public_base_url())
+        stems.append({"track_id": track_id, "render": result})
+    project = project_store.attach_render(project.project_id, mix["file"]["download_url"], "render_project_stems")
+    return _tool_result(
+        f"Rendered {len(stems)} stems and a mix for project {project.project_id}.",
+        {"project": project.model_dump(mode="json"), "mix": mix, "stems": stems},
+        {"mix_local_path": mix["local_path"]},
+    )
 
 
 @mcp.tool(

@@ -50,6 +50,16 @@ inspect_pedalboard_effects
 open_pedalboard_studio
 render_pedalboard_composition
 process_audio_with_pedalboard
+create_project
+get_project
+update_project
+add_project_track
+update_project_track
+add_project_clip
+update_project_clip
+render_project
+render_project_region
+render_project_stems
 ```
 
 The renderer supports:
@@ -61,6 +71,12 @@ The renderer supports:
 - simple synthetic waveforms: `sine`, `square`, `saw`, `triangle`, `noise`
 - global/master effects
 - WAV output serving
+- persistent project JSON
+- durable track and clip IDs
+- project revisions for create/update/render operations
+- full project renders
+- bar-region renders
+- per-track stem exports
 
 Currently exposed effects:
 
@@ -162,18 +178,38 @@ https://YOUR-NGROK-DOMAIN/mcp
 4. Start a new chat and select `Robotic Pedalboard`.
 5. Ask it to render a short piece.
 
+## Persistent Projects
+
+The app now has an early persistent project model. Projects are stored as JSON files in:
+
+```text
+chatgpt_pedalboard_app/projects/
+```
+
+The model can create and retrieve durable project state, add tracks, add clips, render
+the full project, render a bar range, and export stems. It is intentionally still
+simple: clips hold note arrays, tracks hold IDs and basic synth settings, and project
+master effects are applied at render time.
+
+This is the first step from:
+
+```text
+composition -> render
+```
+
+to:
+
+```text
+project -> tracks -> clips -> revisions -> render artifacts
+```
+
 ## Current Limits
 
-This is still a renderer, not yet a DAW.
+This is now a tiny persistent project renderer, not yet a full DAW.
 
 Current missing pieces include:
 
-- persistent project/session state
-- durable track IDs
-- clip objects
 - arrangement sections and markers
-- render regions
-- render stems
 - per-track effects
 - sends, returns, and buses
 - automation lanes
@@ -187,45 +223,27 @@ Current missing pieces include:
 
 ## What Comes Next
 
-The next milestone is persistent project state.
-
-The project should evolve from:
-
-```text
-composition -> render
-```
-
-into:
-
-```text
-project -> tracks -> clips -> revisions -> render artifacts
-```
+The next milestone is making project state feel musically editable rather than merely
+durable.
 
 Recommended near-term tools:
 
 ```text
-create_project
-get_project
-update_project
-create_track
-update_track
-create_clip
-update_clip
-render_project
-render_region
-render_stems
 export_midi
+transpose_clip
+quantize_clip
+humanize_clip
+duplicate_clip
+delete_clip
+mute_track
+solo_track
+compare_renders
 ```
 
 The smallest "AI DAW" milestone:
 
-- persistent project JSON
-- track IDs
-- clip IDs
 - timeline sections
 - per-track effects
-- render region
-- render stems
 - MIDI export
 - revision history
 

@@ -3,7 +3,8 @@
 This is a ChatGPT Apps SDK MCP server that gives ChatGPT an agentic Pedalboard music studio
 inside the regular ChatGPT conversation.
 It can inspect supported effects, render synthesized compositions through a real `pedalboard.Pedalboard`
-chain, process local audio files, and serve WAV outputs that ChatGPT can link back in chat.
+chain, process local audio files, persist project state, render regions/stems, and serve
+WAV outputs that ChatGPT can link back in chat.
 
 The app is tool-first. ChatGPT does not need a human-facing UI to make music with it. An optional
 widget is included only for cases where the user explicitly asks to open a studio surface.
@@ -13,6 +14,7 @@ widget is included only for cases where the user explicitly asks to open a studi
 - Archetype: tool-first ChatGPT app, with an optional widget resource.
 - MCP endpoint: `http://localhost:8000/mcp`
 - Output route: `http://localhost:8000/outputs/<file>.wav`
+- Project storage: `projects/*.json`
 - Optional widget resource: `ui://widget/pedalboard-studio-v1.html`
 - Optional browser preview: `http://localhost:8000/widget`
 - Optional standalone preview render route: `POST http://localhost:8000/api/render`
@@ -23,6 +25,27 @@ widget is included only for cases where the user explicitly asks to open a studi
 - `open_pedalboard_studio`: opens the optional ChatGPT widget only when requested.
 - `render_pedalboard_composition`: creates a WAV from JSON track/effect specs.
 - `process_audio_with_pedalboard`: applies an effect chain to a local file path reachable by the server.
+- `create_project`: creates persistent project JSON with durable IDs and a first revision.
+- `get_project`: retrieves current project state.
+- `update_project`: updates project metadata, sections, tempo, key, duration, or master effects.
+- `add_project_track` / `update_project_track`: edits durable track objects.
+- `add_project_clip` / `update_project_clip`: edits durable clip objects with note arrays.
+- `render_project`: renders the full persistent project.
+- `render_project_region`: renders a bar range.
+- `render_project_stems`: renders one WAV per unmuted track plus a mix.
+
+## Project Model
+
+Projects live in `projects/` as JSON and are ignored by git by default. A project contains:
+
+- `project_id`, title, prompt, tempo, key, time signature, and duration
+- durable tracks with `track_id`, waveform, gain, pan, mute, stored effects, and clip IDs
+- durable clips with `clip_id`, `track_id`, bar placement, length, and notes
+- master effects
+- revisions for project mutations and renders
+
+This is intentionally the smallest DAW-shaped state layer. Per-track effects are stored
+but not fully routed through a mixer graph yet; current project renders apply master effects.
 
 ## Run Locally
 
